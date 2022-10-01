@@ -1,8 +1,8 @@
+import copy
 import random
-
 import numpy as np
-
 import main
+import math
 
 
 class Individual:
@@ -10,21 +10,23 @@ class Individual:
     def __init__(self, configs):
         self.num_rows = configs['num_rows']
         self.num_columns = configs['num_columns']
-        self.arity = configs['arity']
         self.graph_length = self.num_rows * self.num_columns
         self.num_input = configs['num_input']
         self.num_output = configs['num_output']
         self.level_back = configs['level_back']
         self.num_functions = configs['num_functions']
+        self.mutation_rate = configs['mutation_rate']
+        self.function_genes_indexes = None
         self.genotype = None
-        self.genotype = self.generate_genes()
-        self.genes_per_node = []
+        self.genotype, self.function_genes_indexes = self.generate_genes()
         self.fitness = 0.0
 
     def generate_genes(self):
         genes = []
+        function_genes_indexes = []
 
         # generate connection nodes
+        node_index = self.num_input
         for j in range(self.num_columns):
             for i in range(self.num_rows):
                 if j >= self.level_back:
@@ -35,6 +37,7 @@ class Individual:
                     max_range = self.num_input + j * self.num_rows - 1
 
                 function_gene = random.randint(0, self.num_functions)
+                function_genes_indexes.append(i * self.num_rows + j)
                 genes.append(function_gene)
 
                 con_gene_1 = random.randint(min_range, max_range)
@@ -43,22 +46,15 @@ class Individual:
                 con_gene_2 = random.randint(min_range, max_range)
                 genes.append(con_gene_2)
 
+                node_index += 1
+
         # generate output nodes
         for index in range(self.num_output):
             max_range = self.num_input + self.graph_length - 1
             output_gene = random.randint(0, max_range)
             genes.append(output_gene)
 
-        return genes
-
-    def print_genotype(self):
-        if self.genotype is None:
-            print('Individual\'s genotype not mapped\n')
-        else:
-            print(self.genotype)
-
-    def set_fitness(self, fitness):
-        self.fitness = fitness
+        return genes, function_genes_indexes
 
     def count_genes_in_node(self, index):
         if index < self.num_input or index >= self.num_input + self.graph_length:
@@ -67,7 +63,24 @@ class Individual:
             return 3
 
     def mutate(self):
-        return ""
+        for j in range(self.num_columns):
+            for i in range(self.num_rows):
+
+                if random.random() < self.mutation_rate:
+                    print("\t\tmutation!")
+
+                    index = i * self.num_rows + j
+                    if index in self.function_genes_indexes:
+                        self.genotype[index] = random.randint(0, self.num_functions)
+                    else:
+                        if j >= self.level_back:
+                            min_range = self.num_input + (j - self.level_back) * self.num_rows
+                            max_range = self.num_input + j * self.num_rows - 1
+                        else:
+                            min_range = 0
+                            max_range = self.num_input + j * self.num_rows - 1
+
+                        self.genotype[index] = random.randint(min_range, max_range)
 
     # appears to be correct
     def nodes_to_process(self):
@@ -88,7 +101,7 @@ class Individual:
                 for j in range(0, n_n):
                     NG.append(self.genotype[index + j])
 
-                for j in range(0, arity(NG[n_n - 1], True)):
+                for j in range(0, arity(True)):
                     NU[NG[j + 1]] = True
 
         n_u = 0
@@ -100,37 +113,46 @@ class Individual:
         return n_u, NP
 
     def decode(self, input_data, n_u, NP, x, y):
-        o = []
+        o = [0 for _ in range(self.num_input + self.num_rows * self.num_columns)]
 
-        """
         # record pixel value on both inputs
         for i in range(0, self.num_input):
-            o.append(input_data[x][y])
-        """
-        o.append(x)
-        o.append(y)
+            o[i] = input_data[x][y]
+
+        # o.append(x)
+        # o.append(y)
 
         for j in range(0, n_u):
+
+            # get node location in genotype
             n = NP[j] - self.num_input
             n_n = self.count_genes_in_node(NP[j])
             g = n_n * n
 
+            # get connection genes
+            # offset due to difference in node representation -> [f, c1, c2]
             in_array = []
+            offset = 1
             for i in range(0, n_n - 1):
-                in_array.append(o[self.genotype[g + i]])
+                in_array.append(o[self.genotype[g + offset + i]])
 
-            function_gene = self.genotype[g + n_n - 1]
-            o.append(compute_function(x, y, function_gene))
+            # get function gene
+            function_gene = self.genotype[g]
+
+            # calculate node output
+            calculated_output = compute_function(in_array, function_gene)
+            o[n + self.num_input] = calculated_output
 
         lg = len(self.genotype)
-        output = []
+        output = [0 for _ in range(self.num_output)]
         for j in range(0, self.num_output):
-            output.append(o[self.genotype[lg - self.num_output + j]])
+            output[j] = o[self.genotype[lg - self.num_output + j]]
 
         return output
 
     def evaluate(self):
-        return random.uniform(0.0, 1.0)
+        self.fitness = random.uniform(0.0, 1.0)
+        return self.fitness
 
     def evaluate_fitness(self, img_data):
         n_u, NP = self.nodes_to_process()
@@ -147,11 +169,30 @@ class Individual:
         return self.evaluate(), output_img
 
 
-def compute_function(x, y, function):
-    return x * y
+def compute_function(input_array, function):
+    x = input_array[0]
+    y = input_array[1]
+
+    if x is None:
+        x = 255
+    if y is None:
+        y = 255
+
+    if function == 0:
+        return x
+    elif function == 1:
+        return y
+    elif function == 2:
+        return math.sqrt(x + y)
+    elif function == 3:
+        return math.sqrt(abs(x - y))
+    elif function == 4:
+        return 255 * (abs(math.sin(2 * math.pi * x / 255) + math.cos(2 * math.pi * x / 255))) / 2
+    elif function == 5:
+        return 255 * (abs(math.cos(2 * math.pi * x / 255) + math.sin(2 * math.pi * x / 255))) / 2
 
 
-def arity(function, is_node):
+def arity(is_node):
     if is_node:
         return 2
 
@@ -159,29 +200,74 @@ def arity(function, is_node):
 def select_fittest(img_data, generation, population):
     max_fitness = 0
     parent = None
-
     individual_index = 0
+    parent_index = 0
+
+    print("[GENERATION " + str(generation) + "] Choosing first parent")
     for individual in population:
-        print("Evaluating individual " + str(individual_index) + " from generation " + str(generation))
+        # evaluate individual
         fitness, evolved_img = individual.evaluate_fitness(img_data)
         main.save_img(generation, individual_index, evolved_img)
-        individual_index += 1
+
+        print("\t[INDIVIDUAL " + str(individual_index) + "] Fitness: " + "{:.4f}".format(fitness))
+
         if fitness > max_fitness:
             max_fitness = fitness
             parent = individual
+            parent_index = individual_index
+
+        individual_index += 1
+
+    print("[GENERATION " + str(generation) + "] Individual " + str(individual_index) + " is the parent")
 
     return parent
 
 
 def generate(configs, input_img):
+    max_generation = configs.get('max_generation')
+    lambda_arg = configs['lambda_arg']
     generation = 0
     population = []
-    for i in range(1 + configs['lambda_arg']):
+
+    # create first generation
+    for i in range(1 + lambda_arg):
         individual = Individual(configs, )
         population.append(individual)
 
+    # select first parent
     parent = select_fittest(input_img, generation, population)
-    print("1st generation parent:\n\t")
-    print(parent.genotype)
+    generation += 1
 
-    return ""
+    # evolve
+    while generation < max_generation:
+        print("[GENERATION " + str(generation) + "] Evolving")
+
+        population = []
+        for i in range(lambda_arg):
+            offspring = copy.copy(parent)
+            offspring.mutate()
+            population.append(offspring)
+
+        print("\t[PARENT] Fitness: " + "{:.4f}".format(parent.fitness))
+
+        index = 0
+        parent_index = 0
+        new_parent = False
+        for individual in population:
+            fitness, evolved_img = individual.evaluate_fitness(input_img)
+            main.save_img(generation, index, evolved_img)
+
+            print("\t[INDIVIDUAL " + str(index) + "] Fitness: " + "{:.4f}".format(fitness))
+
+            if fitness >= parent.fitness:
+                new_parent = True
+                parent_index = index
+                parent = individual
+
+            index += 1
+
+        if new_parent:
+            print("\t[PARENT] Individual " + str(parent_index) + " is the new parent.")
+        else:
+            print("\t[PARENT] Parent remains the same")
+        generation += 1
