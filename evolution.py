@@ -67,7 +67,6 @@ class Individual:
             for i in range(self.num_rows):
 
                 if random.random() < self.mutation_rate:
-                    print("\t\tmutation!")
 
                     index = i * self.num_rows + j
                     if index in self.function_genes_indexes:
@@ -116,8 +115,11 @@ class Individual:
         o = [0 for _ in range(self.num_input + self.num_rows * self.num_columns)]
 
         # record pixel value on both inputs
-        for i in range(0, self.num_input):
-            o[i] = input_data[x][y]
+        #for i in range(0, self.num_input):
+        #    o[i] = input_data[x, y, i]
+
+        o[0] = x
+        o[1] = y
 
         # o.append(x)
         # o.append(y)
@@ -157,14 +159,14 @@ class Individual:
     def evaluate_fitness(self, img_data):
         n_u, NP = self.nodes_to_process()
 
-        num_rows, num_columns = np.shape(img_data[:, :])
+        num_rows, num_columns = np.shape(img_data[:, :, 0])
         output_img = np.zeros(np.shape(img_data))
 
         for x in range(num_rows):
             for y in range(num_columns):
                 output = self.decode(img_data, n_u, NP, x, y)
-                for value in output:
-                    output_img[x][y] = value
+                for i in range(self.num_output):
+                    output_img[x, y, i] = output[i]
 
         return self.evaluate(), output_img
 
@@ -190,6 +192,32 @@ def compute_function(input_array, function):
         return 255 * (abs(math.sin(2 * math.pi * x / 255) + math.cos(2 * math.pi * x / 255))) / 2
     elif function == 5:
         return 255 * (abs(math.cos(2 * math.pi * x / 255) + math.sin(2 * math.pi * x / 255))) / 2
+    elif function == 6:
+        return 255 * (abs(math.cos(3 * math.pi * x / 255) + math.sin(2 * math.pi * x / 255))) / 2
+    elif function == 7:
+        return math.exp(x + y) % 256
+    elif function == 8:
+        return abs(math.sinh(x + y)) % 256
+    elif function == 9:
+        return math.cosh(x + y) % 256
+    elif function == 10:
+        return 255 * abs(math.tanh(x + y))
+    elif function == 11:
+        return 255 * abs(math.sin(math.pi * (x + y) / 255))
+    elif function == 12:
+        return 255 * abs(math.cos(math.pi * (x + y) / 255))
+    elif function == 13:
+        return 255 * abs(math.tan(math.pi * (x + y) / (255*8)))
+    elif function == 14:
+        return math.sqrt((pow(x, 2) + pow(y, 2)) / 2)
+    elif function == 15:
+        return x * y / 255
+    elif function == 16:
+        return abs(x + y) % 256
+    elif function == 17:
+        return abs(x - y) % 256
+
+
 
 
 def arity(is_node):
@@ -197,7 +225,7 @@ def arity(is_node):
         return 2
 
 
-def select_fittest(img_data, generation, population):
+def select_fittest(output_path, img_data, generation, population):
     max_fitness = 0
     parent = None
     individual_index = 0
@@ -207,7 +235,7 @@ def select_fittest(img_data, generation, population):
     for individual in population:
         # evaluate individual
         fitness, evolved_img = individual.evaluate_fitness(img_data)
-        main.save_img(generation, individual_index, evolved_img)
+        main.save_img(output_path, generation, individual_index, evolved_img)
 
         print("\t[INDIVIDUAL " + str(individual_index) + "] Fitness: " + "{:.4f}".format(fitness))
 
@@ -228,6 +256,8 @@ def generate(configs, input_img):
     lambda_arg = configs['lambda_arg']
     generation = 0
     population = []
+    output_path = "outputs/" + main.get_current_timestamp()
+    main.create_output_folder(output_path)
 
     # create first generation
     for i in range(1 + lambda_arg):
@@ -235,7 +265,7 @@ def generate(configs, input_img):
         population.append(individual)
 
     # select first parent
-    parent = select_fittest(input_img, generation, population)
+    parent = select_fittest(output_path, input_img, generation, population)
     generation += 1
 
     # evolve
@@ -255,7 +285,7 @@ def generate(configs, input_img):
         new_parent = False
         for individual in population:
             fitness, evolved_img = individual.evaluate_fitness(input_img)
-            main.save_img(generation, index, evolved_img)
+            main.save_img(output_path, generation, index, evolved_img)
 
             print("\t[INDIVIDUAL " + str(index) + "] Fitness: " + "{:.4f}".format(fitness))
 

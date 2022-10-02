@@ -2,12 +2,12 @@ import evolution
 import numpy as np
 import matplotlib.pyplot as plt
 import imageio
+import os
+import datetime
 
 
 def load_input(img_path):
     img = plt.imread(img_path)
-    r, g, b = img[:, :, 0], img[:, :, 1], img[:, :, 2]
-    img = (0.2989 * r + 0.5870 * g + 0.1140 * b) * 255
 
     return img
 
@@ -17,10 +17,28 @@ def show_img(img):
     plt.show()
 
 
-def save_img(generation, individual, img):
-    filename = "outputs/" + str(generation) + "_" + str(individual) + ".png"
+def save_img(path, generation, individual, img):
+    filename = path + "/" +str(generation) + "_" + str(individual) + ".png"
     img = img.astype(np.uint8)
     imageio.imwrite(filename, img)
+
+
+def get_current_timestamp():
+    ct = datetime.datetime.now()
+
+    timestamp = str(ct)
+    timestamp = timestamp[:timestamp.find('.')]
+    timestamp = timestamp.replace('-', '_').replace(':', '_').replace(' ', '_')
+
+    return timestamp
+
+
+def create_output_folder(path):
+    # Check whether the specified path exists or not
+    isExist = os.path.exists(path)
+
+    if not isExist:
+        os.makedirs(path)
 
 
 def main():
@@ -34,12 +52,12 @@ def main():
         'num_columns': 10,
         'level_back': 8,
         'num_input': 2,
-        'num_output': 1,
+        'num_output': 3,
         'num_functions': 6,
         'lambda_arg': 4,
         'arity': 2,
         'mutation_rate': 0.5,
-        'max_generation': 10,
+        'max_generation': 30,
     }
 
     evolution.generate(configs, input_img)
