@@ -48,16 +48,16 @@ def main():
     # show_img(input_img)
 
     configs = {
-        'num_rows': 10,
-        'num_columns': 10,
+        'num_rows': 4,
+        'num_columns': 4,
         'level_back': 8,
         'num_input': 2,
         'num_output': 3,
-        'num_functions': 6,
+        'num_functions': 9,
         'lambda_arg': 4,
         'arity': 2,
-        'mutation_rate': 0.5,
-        'max_generation': 3,
+        'mutation_rate': 0.01,
+        'max_generation': 4,
     }
 
     evolution.generate(configs, input_img)

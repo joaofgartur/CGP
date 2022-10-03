@@ -2,7 +2,6 @@ import copy
 import random
 import numpy as np
 import main
-import math
 
 
 class Individual:
@@ -196,31 +195,31 @@ def compute_function(input_array, function):
     elif function == 1:
         return y
     elif function == 2:
-        return math.sqrt(x + y)
+        return np.sqrt(x + y)
     elif function == 3:
-        return math.sqrt(abs(x - y))
+        return np.sqrt(abs(x - y))
     elif function == 4:
-        return 255 * (abs(math.sin(2 * math.pi * x / 255) + math.cos(2 * math.pi * x / 255))) / 2
+        return 255 * (abs(np.sin(2 * np.pi * x / 255) + np.cos(2 * np.pi * x / 255))) / 2
     elif function == 5:
-        return 255 * (abs(math.cos(2 * math.pi * x / 255) + math.sin(2 * math.pi * x / 255))) / 2
+        return 255 * (abs(np.cos(2 * np.pi * x / 255) + np.sin(2 * np.pi * x / 255))) / 2
     elif function == 6:
-        return 255 * (abs(math.cos(3 * math.pi * x / 255) + math.sin(2 * math.pi * x / 255))) / 2
+        return 255 * (abs(np.cos(3 * np.pi * x / 255) + np.sin(2 * np.pi * x / 255))) / 2
     elif function == 7:
-        return math.exp(x + y) % 256
+        return np.exp(x + y) % 256
     elif function == 8:
-        return abs(math.sinh(x + y)) % 256
+        return abs(np.sinh(x + y)) % 256
     elif function == 9:
-        return math.cosh(x + y) % 256
+        return np.cosh(x + y) % 256
     elif function == 10:
-        return 255 * abs(math.tanh(x + y))
+        return 255 * abs(np.tanh(x + y))
     elif function == 11:
-        return 255 * abs(math.sin(math.pi * (x + y) / 255))
+        return 255 * abs(np.sin(np.pi * (x + y) / 255))
     elif function == 12:
-        return 255 * abs(math.cos(math.pi * (x + y) / 255))
+        return 255 * abs(np.cos(np.pi * (x + y) / 255))
     elif function == 13:
-        return 255 * abs(math.tan(math.pi * (x + y) / (255 * 8)))
+        return 255 * abs(np.tan(np.pi * (x + y) / (255 * 8)))
     elif function == 14:
-        return math.sqrt((pow(x, 2) + pow(y, 2)) / 2)
+        return np.sqrt((pow(x, 2) + pow(y, 2)) / 2)
     elif function == 15:
         return x * y / 255
     elif function == 16:
@@ -255,7 +254,7 @@ def select_fittest(output_path, img_data, generation, population):
 
         individual_index += 1
 
-    print("[GENERATION " + str(generation) + "] Individual " + str(individual_index) + " is the parent")
+    print("[GENERATION " + str(generation) + "] Individual " + str(parent_index) + " is the parent")
 
     return parent
 
