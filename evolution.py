@@ -27,6 +27,7 @@ class Individual:
 
         # generate connection nodes
         node_index = self.num_input
+        gene_index = 0
         for j in range(self.num_columns):
             for i in range(self.num_rows):
                 if j >= self.level_back:
@@ -37,14 +38,17 @@ class Individual:
                     max_range = self.num_input + j * self.num_rows - 1
 
                 function_gene = random.randint(0, self.num_functions)
-                function_genes_indexes.append(i * self.num_rows + j)
                 genes.append(function_gene)
+                function_genes_indexes.append(gene_index)
+                gene_index += 1
 
                 con_gene_1 = random.randint(min_range, max_range)
                 genes.append(con_gene_1)
+                gene_index += 1
 
                 con_gene_2 = random.randint(min_range, max_range)
                 genes.append(con_gene_2)
+                gene_index += 1
 
                 node_index += 1
 
@@ -62,12 +66,12 @@ class Individual:
         else:
             return 3
 
+    # mutate genotype
     def mutate(self):
         for j in range(self.num_columns):
             for i in range(self.num_rows):
 
                 if random.random() < self.mutation_rate:
-
                     index = i * self.num_rows + j
                     if index in self.function_genes_indexes:
                         self.genotype[index] = random.randint(0, self.num_functions)
@@ -81,7 +85,7 @@ class Individual:
 
                         self.genotype[index] = random.randint(min_range, max_range)
 
-    # appears to be correct
+    # determine coding nodes
     def nodes_to_process(self):
         M = self.num_columns * self.num_rows + self.num_input
         NU = [False for _ in range(M)]
@@ -111,18 +115,16 @@ class Individual:
 
         return n_u, NP
 
+    # decode active nodes
     def decode(self, input_data, n_u, NP, x, y):
         o = [0 for _ in range(self.num_input + self.num_rows * self.num_columns)]
 
         # record pixel value on both inputs
-        #for i in range(0, self.num_input):
+        # for i in range(0, self.num_input):
         #    o[i] = input_data[x, y, i]
 
         o[0] = x
         o[1] = y
-
-        # o.append(x)
-        # o.append(y)
 
         for j in range(0, n_u):
 
@@ -170,7 +172,16 @@ class Individual:
 
         return self.evaluate(), output_img
 
+    # return shallow copy of the individual
+    def new(self):
+        new = copy.copy(self)
+        new.genotype = list(self.genotype)
+        new.function_genes_indexes = list(self.function_genes_indexes)
 
+        return new
+
+
+# compute function result
 def compute_function(input_array, function):
     x = input_array[0]
     y = input_array[1]
@@ -207,7 +218,7 @@ def compute_function(input_array, function):
     elif function == 12:
         return 255 * abs(math.cos(math.pi * (x + y) / 255))
     elif function == 13:
-        return 255 * abs(math.tan(math.pi * (x + y) / (255*8)))
+        return 255 * abs(math.tan(math.pi * (x + y) / (255 * 8)))
     elif function == 14:
         return math.sqrt((pow(x, 2) + pow(y, 2)) / 2)
     elif function == 15:
@@ -216,8 +227,6 @@ def compute_function(input_array, function):
         return abs(x + y) % 256
     elif function == 17:
         return abs(x - y) % 256
-
-
 
 
 def arity(is_node):
@@ -274,7 +283,7 @@ def generate(configs, input_img):
 
         population = []
         for i in range(lambda_arg):
-            offspring = copy.copy(parent)
+            offspring = parent.new()
             offspring.mutate()
             population.append(offspring)
 

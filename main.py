@@ -57,7 +57,7 @@ def main():
         'lambda_arg': 4,
         'arity': 2,
         'mutation_rate': 0.5,
-        'max_generation': 30,
+        'max_generation': 3,
     }
 
     evolution.generate(configs, input_img)
