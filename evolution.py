@@ -192,7 +192,7 @@ class Individual:
         output_img = np.zeros(np.shape(img_data))
 
         x_values = np.linspace(-1, 1.0, num=num_columns)
-        y_values = np.linspace(-1, 1.0, num=num_rows)
+        y_values = np.linspace(-1.0, 1.0, num=num_rows)
         for i in range(len(x_values)):
             for j in range(len(x_values)):
                 x = x_values[i]
@@ -200,7 +200,7 @@ class Individual:
                 input_data = np.array([x, y])
                 output = self.decode(input_data, n_u, NP)
                 for k in range(self.num_output):
-                    output_img[i, j, k] = output[k]
+                    output_img[i, j, k] = np.interp(output[k], [MIN_INPUT, MAX_INPUT], [MIN_OUTPUT, MAX_OUTPUT])
 
         utils.save_img(output_path, generation, index, output_img)
 
