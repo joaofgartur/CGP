@@ -11,6 +11,7 @@ FITNESS_MAX_VALUE = 100
 OFFSET = 1  # offset due to difference in node representation -> [f, c1, c2]
 
 CSV_HEADER = ["generation", "max_fitness", "min_fitness", "mean", "std", "genotype", "active_nodes"]
+INDIVIDUAL_CSV_HEADER = ["generation", "individual", "fitness", "genotype", "active_nodes"]
 
 
 class Individual:
@@ -278,7 +279,7 @@ def population_statistics(generation, parent, fitness_array, active_nodes_array)
             fitness_std, utils.list_to_str(parent.genotype), utils.list_to_str(parent_active_nodes)]
 
 
-def select_fittest(output_path, csv_path, img_data, generation, population):
+def select_fittest(output_path, csv_path, individual_csv_path, img_data, generation, population):
     max_fitness = 0
     parent = None
     individual_index = 0
@@ -294,6 +295,9 @@ def select_fittest(output_path, csv_path, img_data, generation, population):
                                                                        individual_index)
         population_fitness.append(fitness)
         population_active_nodes.append(individual_active_nodes)
+
+        individual_data = [generation, individual_index, fitness, individual.genotype, individual_active_nodes]
+        utils.write_to_csv(individual_csv_path, individual_data)
 
         print("\t[INDIVIDUAL " + str(individual_index) + "] Fitness: " + "{:.4f}".format(fitness))
 
@@ -320,8 +324,10 @@ def generate(configs, input_img):
 
     output_path = "outputs/" + utils.get_current_timestamp()
     csv_path = output_path + "/log.csv"
+    individuals_csv_path = output_path + "/individuals_log.csv"
     utils.create_output_folder(output_path)
     utils.write_to_csv(csv_path, CSV_HEADER)
+    utils.write_to_csv(individuals_csv_path, INDIVIDUAL_CSV_HEADER)
 
     print("[OUTPUT] Generated images' path: " + output_path)
 
@@ -331,7 +337,7 @@ def generate(configs, input_img):
         population.append(individual)
 
     # select first parent
-    parent = select_fittest(output_path, csv_path, input_img, generation, population)
+    parent = select_fittest(output_path, csv_path, individuals_csv_path, input_img, generation, population)
     generation += 1
 
     # evolve
@@ -358,6 +364,9 @@ def generate(configs, input_img):
 
             population_fitness.append(fitness)
             population_active_nodes.append(individual_active_nodes)
+
+            individual_data = [generation, index, fitness, individual.genotype, individual_active_nodes]
+            utils.write_to_csv(individuals_csv_path, individual_data)
 
             if fitness >= parent.fitness:
                 new_parent = True
