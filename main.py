@@ -1,65 +1,17 @@
+import argparse
 import evolution
-import numpy as np
-import matplotlib.pyplot as plt
-import imageio
-import os
-import datetime
-
-
-def load_input(img_path):
-    img = plt.imread(img_path)
-
-    return img
-
-
-def show_img(img):
-    plt.imshow(img)
-    plt.show()
-
-
-def save_img(path, generation, individual, img):
-    filename = path + "/" +str(generation) + "_" + str(individual) + ".png"
-    img = img.astype(np.uint8)
-    imageio.imwrite(filename, img)
-
-
-def get_current_timestamp():
-    ct = datetime.datetime.now()
-
-    timestamp = str(ct)
-    timestamp = timestamp[:timestamp.find('.')]
-    timestamp = timestamp.replace('-', '_').replace(':', '_').replace(' ', '_')
-
-    return timestamp
-
-
-def create_output_folder(path):
-    # Check whether the specified path exists or not
-    isExist = os.path.exists(path)
-
-    if not isExist:
-        os.makedirs(path)
+import utils
 
 
 def main():
-    img_path = "input/img.png"
-    input_img = load_input(img_path)
 
-    # show_img(input_img)
+    description = "Cartesian Genetic Programming"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('configs', metavar='configs', type=str, help='Configs file')
+    args = parser.parse_args()
+    configs = utils.load_configs(args.configs)
 
-    configs = {
-        'num_rows': 4,
-        'num_columns': 4,
-        'level_back': 8,
-        'num_input': 2,
-        'num_output': 3,
-        'num_functions': 9,
-        'lambda_arg': 4,
-        'arity': 2,
-        'mutation_rate': 0.01,
-        'max_generation': 4,
-    }
-
+    input_img = utils.create_white_img(configs['image_width'], configs['image_height'])
     evolution.generate(configs, input_img)
 
 

@@ -1,0 +1,14 @@
+{
+  "image_width": 128,
+  "image_height": 128,
+  "num_rows": 4,
+  "num_columns": 4,
+  "level_back": 8,
+  "num_input": 2,
+  "num_output": 3,
+  "num_functions": 3,
+  "lambda_arg": 4,
+  "arity": 2,
+  "mutation_rate": 0.5,
+  "max_generation": 2
+}
