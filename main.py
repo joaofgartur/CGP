@@ -5,6 +5,7 @@ import utils
 
 def main():
 
+    # add random seed and its value to the parameters
     description = "Cartesian Genetic Programming"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('configs', metavar='configs', type=str, help='Configs file')

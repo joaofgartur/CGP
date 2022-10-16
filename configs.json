@@ -7,8 +7,6 @@
   "num_input": 2,
   "num_output": 3,
   "num_functions": 3,
-  "lambda_arg": 4,
-  "arity": 2,
   "mutation_rate": 0.5,
   "max_generation": 2
 }

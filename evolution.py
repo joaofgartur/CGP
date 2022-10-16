@@ -9,6 +9,7 @@ MIN_OUTPUT = 0.0
 MAX_OUTPUT = 255.0
 FITNESS_MAX_VALUE = 100
 OFFSET = 1  # offset due to difference in node representation -> [f, c1, c2]
+LAMBDA = 4
 
 CSV_HEADER = ["generation", "max_fitness", "min_fitness", "mean", "std", "genotype", "active_nodes"]
 INDIVIDUAL_CSV_HEADER = ["generation", "individual", "fitness", "genotype", "active_nodes"]
@@ -154,8 +155,9 @@ class Individual:
                 print(str(function_gene) + " -> negative")
             o[n + self.num_input] = calculated_output
 
+
         lg = len(self.genotype)
-        output = [0 for _ in range(self.num_output)]
+        output = [0 for _ in range(self.num_output)] #substituir por np.zero
         for j in range(0, self.num_output):
             output[j] = o[self.genotype[lg - self.num_output + j]]
 
@@ -185,6 +187,7 @@ class Individual:
 
         return self.fitness
 
+    # remove from the individual ou ver tensorGP
     def evaluate_fitness(self, img_data, output_path, generation, index):
         n_u, NP = self.nodes_to_process()
 
@@ -318,7 +321,6 @@ def select_fittest(output_path, csv_path, individual_csv_path, img_data, generat
 
 def generate(configs, input_img):
     max_generation = configs.get('max_generation')
-    lambda_arg = configs['lambda_arg']
     generation = 0
     population = []
 
@@ -332,8 +334,9 @@ def generate(configs, input_img):
     print("[OUTPUT] Generated images' path: " + output_path)
 
     # create first generation
-    for i in range(1 + lambda_arg):
-        individual = Individual(configs, )
+    # criar função para primeira population
+    for i in range(1 + LAMBDA):
+        individual = Individual(configs)
         population.append(individual)
 
     # select first parent
@@ -341,13 +344,14 @@ def generate(configs, input_img):
     generation += 1
 
     # evolve
+    # substituir por for
     while generation < max_generation:
         print("[GENERATION " + str(generation) + "] Evolving")
 
         population = []
         population_active_nodes = []
         population_fitness = []
-        for i in range(lambda_arg):
+        for i in range(LAMBDA):
             offspring = parent.new()
             offspring.mutate()
             population.append(offspring)
@@ -371,6 +375,7 @@ def generate(configs, input_img):
             if fitness >= parent.fitness:
                 new_parent = True
                 parent_index = index
+                #fazer deepcopy do individuo
                 parent = individual
 
             index += 1
