@@ -10,9 +10,16 @@ MAX_OUTPUT = 255.0
 FITNESS_MAX_VALUE = 100
 OFFSET = 1  # offset due to difference in node representation -> [f, c1, c2]
 LAMBDA = 4
+ONE = 1
+ZERO = 0
+NODE_SIZE = 3
+ARITY = 2
 
-CSV_HEADER = ["generation", "max_fitness", "min_fitness", "mean", "std", "genotype", "active_nodes"]
-INDIVIDUAL_CSV_HEADER = ["generation", "individual", "fitness", "genotype", "active_nodes"]
+GENERATIONS_LOG_HEADER = ["generation", "max_fitness", "min_fitness", "mean", "std", "fitness", "genotype",
+                          "active_nodes"]
+GENERATIONS_LOG_FILE = "generations.csv"
+LOG_HEADER = ["generation", "individual", "fitness", "genotype", "active_nodes"]
+LOG_FILE = "log.csv"
 
 
 class Individual:
@@ -28,7 +35,9 @@ class Individual:
         self.mutation_rate = configs['mutation_rate']
         self.function_genes_indexes = None
         self.genotype = None
+        self.active_nodes = None
         self.genotype, self.function_genes_indexes = self.generate_genes()
+        self.data = None
         self.fitness = 0.0
 
     def get_connection_range(self, j):
@@ -43,44 +52,44 @@ class Individual:
         return min_range, max_range
 
     def generate_genes(self):
-        genes = []
-        function_genes_indexes = []
+        genes = np.zeros(ZERO, dtype=np.int)
+        function_genes_indexes = np.zeros(ZERO, dtype=np.int)
 
         # generate connection nodes
-        node_index = self.num_input
         gene_index = 0
         for j in range(self.num_columns):
             for i in range(self.num_rows):
+                node = np.zeros(ZERO, dtype=np.int)
                 min_range, max_range = self.get_connection_range(j)
 
                 function_gene = random.randint(0, self.num_functions)
-                genes.append(function_gene)
-                function_genes_indexes.append(gene_index)  # store function gene position; used in mutation
+                node = np.append(node, function_gene)
+                function_genes_indexes = np.append(function_genes_indexes, gene_index)
                 gene_index += 1
 
                 con_gene_1 = random.randint(min_range, max_range)
-                genes.append(con_gene_1)
+                node = np.append(node, con_gene_1)
                 gene_index += 1
 
                 con_gene_2 = random.randint(min_range, max_range)
-                genes.append(con_gene_2)
+                node = np.append(node, con_gene_2)
                 gene_index += 1
 
-                node_index += 1
+                genes = np.append(genes, node)
 
         # generate output nodes
         for index in range(self.num_output):
             max_range = self.num_input + self.graph_length - 1
             output_gene = random.randint(0, max_range)
-            genes.append(output_gene)
+            genes = np.append(genes, output_gene)
 
         return genes, function_genes_indexes
 
     def count_genes_in_node(self, index):
         if index < self.num_input or index >= self.num_input + self.graph_length:
-            return 1
+            return ONE
         else:
-            return 3
+            return NODE_SIZE
 
     # mutate genotype
     def mutate(self):
@@ -101,7 +110,7 @@ class Individual:
         NU = [False for _ in range(M)]
         NP = []
 
-        lg = len(self.genotype)
+        lg = self.genotype.size
         for i in range(lg - self.num_output, lg):
             NU[self.genotype[i]] = True
 
@@ -114,8 +123,8 @@ class Individual:
                 for j in range(0, n_n):
                     NG.append(self.genotype[index + j])
 
-                for j in range(0, arity(True)):
-                    NU[NG[j + 1]] = True
+                for j in range(0, ARITY):
+                    NU[NG[j + OFFSET]] = True
 
         n_u = 0
         for j in range(self.num_input, M):
@@ -127,7 +136,7 @@ class Individual:
 
     # decode active nodes
     def decode(self, input_data, n_u, NP):
-        o = [0 for _ in range(self.num_input + self.num_rows * self.num_columns)]
+        o = np.zeros(self.num_input + self.num_rows * self.num_columns)
 
         # record pixel value on both inputs
         for i in range(0, self.num_input):
@@ -151,71 +160,14 @@ class Individual:
 
             # calculate node output
             calculated_output = compute_function(in_array, function_gene)
-            if calculated_output < 0:
-                print(str(function_gene) + " -> negative")
             o[n + self.num_input] = calculated_output
 
-
-        lg = len(self.genotype)
-        output = [0 for _ in range(self.num_output)] #substituir por np.zero
+        lg = self.genotype.size
+        output = np.zeros(self.num_output)
         for j in range(0, self.num_output):
             output[j] = o[self.genotype[lg - self.num_output + j]]
 
         return output
-
-    def evaluate(self, generation, individual):
-
-        fitness = 0
-        needs_input = True
-        while needs_input:
-            print("[FITNESS] Evaluate individual " + str(individual) + " from generation " + str(generation)
-                  + " from 0 to " + str(FITNESS_MAX_VALUE) + ". The image is " + str(generation)
-                  + "_" + str(individual) + ".png")
-
-            while True:
-                try:
-                    fitness = float(input('[FITNESS]: '))
-                except ValueError:
-                    continue
-                else:
-                    break
-
-            if 0 <= fitness <= 100:
-                needs_input = False
-
-        self.fitness = fitness / FITNESS_MAX_VALUE
-
-        return self.fitness
-
-    # remove from the individual ou ver tensorGP
-    def evaluate_fitness(self, img_data, output_path, generation, index):
-        n_u, NP = self.nodes_to_process()
-
-        num_rows, num_columns = np.shape(img_data[:, :, 0])
-        output_img = np.zeros(np.shape(img_data))
-
-        x_values = np.linspace(-1, 1.0, num=num_columns)
-        y_values = np.linspace(-1.0, 1.0, num=num_rows)
-        for i in range(len(x_values)):
-            for j in range(len(x_values)):
-                x = x_values[i]
-                y = y_values[i]
-                input_data = np.array([x, y])
-                output = self.decode(input_data, n_u, NP)
-                for k in range(self.num_output):
-                    output_img[i, j, k] = np.interp(output[k], [MIN_INPUT, MAX_INPUT], [MIN_OUTPUT, MAX_OUTPUT])
-
-        utils.save_img(output_path, generation, index, output_img)
-
-        return self.evaluate(generation, index), NP
-
-    # return shallow copy of the individual
-    def new(self):
-        new = copy.copy(self)
-        new.genotype = list(self.genotype)
-        new.function_genes_indexes = list(self.function_genes_indexes)
-
-        return new
 
 
 # compute function result
@@ -225,167 +177,188 @@ def compute_function(input_array, function):
 
     result = 0
     if function == 0:
-        result = np.interp(x, [MIN_INPUT, MAX_INPUT], [MIN_OUTPUT, MAX_OUTPUT])
+        result = np.abs(x)
     elif function == 1:
-        result = np.interp(y, [MIN_INPUT, MAX_INPUT], [MIN_OUTPUT, MAX_OUTPUT])
+        result = np.abs(y)
     elif function == 2:
-        result = np.sqrt(abs(x + y))
+        result = x * y
     elif function == 3:
-        result = np.sqrt(abs(x - y))
+        result = np.abs((np.sin(2 * np.pi * x) + np.cos(2 * np.pi * y))) * 0.5
     elif function == 4:
-        result = 255 * (abs(np.sin(2 * np.pi * x / 255) + np.cos(2 * np.pi * x / 255))) / 2
+        result = np.abs((np.cos(2 * np.pi * x) + np.sin(2 * np.pi * y))) * 0.5
     elif function == 5:
-        result = 255 * (abs(np.cos(2 * np.pi * x / 255) + np.sin(2 * np.pi * x / 255))) / 2
+        result = np.abs((np.cos(3 * np.pi * x) + np.sin(2 * np.pi * y))) * 0.5
     elif function == 6:
-        result = 255 * (abs(np.cos(3 * np.pi * x / 255) + np.sin(2 * np.pi * x / 255))) / 2
+        result = np.abs(np.tanh(x + y))
     elif function == 7:
-        result = np.exp(x + y) % 256
+        result = np.abs(np.sin(np.pi * (x + y)))
     elif function == 8:
-        result = abs(np.sinh(x + y)) % 256
+        result = np.abs(np.cos(np.pi * (x + y)))
     elif function == 9:
-        result = np.cosh(x + y) % 256
+        result = np.sqrt((np.power(x, 2) + np.power(y, 2)) * 0.5) - 0.5
     elif function == 10:
-        result = 255 * abs(np.tanh(x + y))
-    elif function == 11:
-        result = 255 * abs(np.sin(np.pi * (x + y) / 255))
-    elif function == 12:
-        result = 255 * abs(np.cos(np.pi * (x + y) / 255))
-    elif function == 13:
-        result = 255 * abs(np.tan(np.pi * (x + y) / (255 * 8)))
-    elif function == 14:
-        result = np.sqrt((pow(x, 2) + pow(y, 2)) / 2)
-    elif function == 15:
-        result = x * y / 255
-    elif function == 16:
-        result = abs(x + y) % 256
-    elif function == 17:
-        result = abs(x - y) % 256
+        result = np.abs(x * y)
 
-    # print(result)
     return result
 
 
-def arity(is_node):
-    if is_node:
-        return 2
+def population_statistics(output_folder, generation_folder, generation, population, best, parentStats=False, parent=None):
+    fitness_array = np.zeros(0, dtype=np.float32)
+
+    log_file = generation_folder + "/" + LOG_FILE
+    utils.write_to_file(log_file, LOG_HEADER)
+
+    # write log for parent
+    if parentStats:
+        fitness_array = np.append(fitness_array, parent.fitness)
+        parent_stats = [generation, "parent", parent.fitness, parent.genotype, parent.active_nodes]
+        utils.write_to_file(log_file, parent_stats)
+
+    # write log for individuals
+    for i in range(len(population)):
+        individual = population[i]
+        fitness_array = np.append(fitness_array, individual.fitness)
+        individual_stats = [generation, i, individual.fitness, individual.genotype, individual.active_nodes]
+        utils.write_to_file(log_file, individual_stats)
+
+    # write log for generation
+    generations_file = output_folder + "/" + GENERATIONS_LOG_FILE
+    mean_fitness = np.mean(fitness_array)
+    std_fitness = np.std(fitness_array)
+    min_fitness = np.min(fitness_array)
+    max_fitness = np.max(fitness_array)
+    generation_stats = [generation, min_fitness, max_fitness, mean_fitness, std_fitness, best.fitness,
+                        best.genotype, best.active_nodes]
+    utils.write_to_file(generations_file, generation_stats)
 
 
-def population_statistics(generation, parent, fitness_array, active_nodes_array):
-    best_fitness_index = np.argmax(fitness_array)
-    worst_fitness_index = np.argmin(fitness_array)
-    fitness_mean = np.mean(fitness_array)
-    fitness_std = np.std(fitness_array)
+def express_phenotype(individual, data):
+    # discover active nodes of individual
+    n_u, NP = individual.nodes_to_process()
 
-    parent_active_nodes = active_nodes_array[best_fitness_index]
+    num_rows, num_columns = np.shape(data[:, :, 0])
+    output_data = np.zeros(np.shape(data))
 
-    return [generation, fitness_array[best_fitness_index], fitness_array[worst_fitness_index], fitness_mean,
-            fitness_std, utils.list_to_str(parent.genotype), utils.list_to_str(parent_active_nodes)]
+    # generate output data
+    x_values = np.linspace(-1, 1.0, num=num_columns)
+    y_values = np.linspace(-1.0, 1.0, num=num_rows)
+    for i in range(len(x_values)):
+        for j in range(len(y_values)):
+            x = x_values[i]
+            y = y_values[i]
+            input_data = np.array([x, y])
+            output = individual.decode(input_data, n_u, NP)
+            for k in range(individual.num_output):
+                output_data[i, j, k] = np.interp(output[k], [MIN_INPUT, MAX_INPUT], [MIN_OUTPUT, MAX_OUTPUT])
+
+    individual.data = output_data
+
+    return NP
 
 
-def select_fittest(output_path, csv_path, individual_csv_path, img_data, generation, population):
-    max_fitness = 0
-    parent = None
+def copy_individual(individual_to_copy):
+    copied_individual = copy.deepcopy(individual_to_copy)
+    copied_individual.fitness = 0.0
+    copied_individual.active_nodes = np.array(individual_to_copy.active_nodes)
+    copied_individual.genotype = np.array(individual_to_copy.genotype)
+
+    return copied_individual
+
+
+def select_parent(population, parent):
+    if parent is None:
+        max_fitness = 0
+    else:
+        max_fitness = parent.fitness
+
     individual_index = 0
     parent_index = 0
-    population_active_nodes = []
-    population_fitness = []
-
-    print("[GENERATION " + str(generation) + "] Choosing first parent")
+    new_parent = False
     for individual in population:
-
-        # evaluate individual
-        fitness, individual_active_nodes = individual.evaluate_fitness(img_data, output_path, generation,
-                                                                       individual_index)
-        population_fitness.append(fitness)
-        population_active_nodes.append(individual_active_nodes)
-
-        individual_data = [generation, individual_index, fitness, individual.genotype, individual_active_nodes]
-        utils.write_to_csv(individual_csv_path, individual_data)
-
-        print("\t[INDIVIDUAL " + str(individual_index) + "] Fitness: " + "{:.4f}".format(fitness))
-
-        if fitness > max_fitness:
-            max_fitness = fitness
-            parent = individual
+        print("\t[INDIVIDUAL " + str(individual_index) + "] Fitness: " + "{:.4f}".format(individual.fitness))
+        if individual.fitness >= max_fitness:
+            parent = copy.deepcopy(individual)
+            max_fitness = parent.fitness
+            new_parent = True
             parent_index = individual_index
-
         individual_index += 1
 
-    print("[GENERATION " + str(generation) + "] Individual " + str(parent_index) + " is the parent")
-
-    data = population_statistics(generation, parent, population_fitness, population_active_nodes)
-    utils.write_to_csv(csv_path, data)
+    if new_parent:
+        print("\t[PARENT]: Individual " + str(parent_index) + " selected as parent")
+    else:
+        print("\t[PARENT]: Parent remains the same")
 
     return parent
 
 
-def generate(configs, input_img):
+def generate(configs, fitness_function, input_data):
     max_generation = configs.get('max_generation')
-    generation = 0
+
+    output_folder = "outputs/" + utils.get_current_timestamp()
+    utils.create_directory(output_folder)
+    generations_file = output_folder + "/" + GENERATIONS_LOG_FILE
+    utils.write_to_file(generations_file, GENERATIONS_LOG_HEADER)
+    best_folder = output_folder + "/best_individuals"
+    utils.create_directory(best_folder)
+    generation_folder = output_folder + "/generation_0"
+    utils.create_directory(generation_folder)
+
+    print("[GENERATION " + str(ZERO) + "] Lifecycle")
+
+    # create first generation and express phenotype of individuals
     population = []
-
-    output_path = "outputs/" + utils.get_current_timestamp()
-    csv_path = output_path + "/log.csv"
-    individuals_csv_path = output_path + "/individuals_log.csv"
-    utils.create_output_folder(output_path)
-    utils.write_to_csv(csv_path, CSV_HEADER)
-    utils.write_to_csv(individuals_csv_path, INDIVIDUAL_CSV_HEADER)
-
-    print("[OUTPUT] Generated images' path: " + output_path)
-
-    # create first generation
-    # criar função para primeira population
-    for i in range(1 + LAMBDA):
+    for i in range(ONE + LAMBDA):
         individual = Individual(configs)
+        active_nodes = express_phenotype(individual, input_data)  # genotype -> genotype
+        individual.active_nodes = np.array(active_nodes)
         population.append(individual)
 
-    # select first parent
-    parent = select_fittest(output_path, csv_path, individuals_csv_path, input_img, generation, population)
-    generation += 1
+    if configs['export_individuals']:
+        utils.export_images(population, generation_folder)
+
+    # evaluate first generation
+    population = fitness_function(population)
+
+    # select parent
+    parent = select_parent(population, None)
+
+    # get statistics
+    population_statistics(output_folder, generation_folder, ZERO, population, best=parent)
+    if configs['export_individuals']:
+        utils.save_img(best_folder, ZERO, parent.data)
 
     # evolve
-    # substituir por for
-    while generation < max_generation:
-        print("[GENERATION " + str(generation) + "] Evolving")
+    for generation in range(1, max_generation):
+        print("[GENERATION " + str(generation) + "] Lifecycle")
 
+        generation_folder = output_folder + "/generation_" + str(generation)
+        utils.create_directory(generation_folder)
+
+        # export image of parent
+        if configs['export_individuals']:
+            utils.save_img(generation_folder, "parent", parent.data)
+
+        # create new generation and express phenotype of individuals
         population = []
-        population_active_nodes = []
-        population_fitness = []
         for i in range(LAMBDA):
-            offspring = parent.new()
+            offspring = copy_individual(parent)
             offspring.mutate()
+            active_nodes = express_phenotype(offspring, input_data)  # genotype -> genotype
+            offspring.active_nodes = np.array(active_nodes)
             population.append(offspring)
 
-        print("\t[PARENT] Fitness: " + "{:.4f}".format(parent.fitness))
+        # export images of individuals
+        if configs['export_individuals']:
+            utils.export_images(population, generation_folder)
 
-        index = 0
-        parent_index = 0
-        new_parent = False
-        for individual in population:
-            fitness, individual_active_nodes = individual.evaluate_fitness(input_img, output_path, generation, index)
+        # evaluate generation
+        population = fitness_function(population)
 
-            print("\t[INDIVIDUAL " + str(index) + "] Fitness: " + "{:.4f}".format(fitness))
+        # select parent
+        print("\t[PARENT]: Fitness " + "{:.4f}".format(parent.fitness))
+        parent = select_parent(population, parent)
+        if configs['export_individuals']:
+            utils.save_img(best_folder, generation, parent.data)
 
-            population_fitness.append(fitness)
-            population_active_nodes.append(individual_active_nodes)
-
-            individual_data = [generation, index, fitness, individual.genotype, individual_active_nodes]
-            utils.write_to_csv(individuals_csv_path, individual_data)
-
-            if fitness >= parent.fitness:
-                new_parent = True
-                parent_index = index
-                #fazer deepcopy do individuo
-                parent = individual
-
-            index += 1
-
-        if new_parent:
-            print("\t[PARENT] Individual " + str(parent_index) + " is the new parent.")
-        else:
-            print("\t[PARENT] Parent remains the same")
-
-        data = population_statistics(generation, parent, population_fitness, population_active_nodes)
-        utils.write_to_csv(csv_path, data)
-
-        generation += 1
+        population_statistics(output_folder, generation_folder, generation, population,
+                              best=parent, parentStats=True, parent=parent)
