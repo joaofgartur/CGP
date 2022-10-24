@@ -15,6 +15,7 @@ The configs required are in the *configs.json* file. You can change them there.
   * **mutation_rate**: Mutation rate.
   * **max_generation**: Limit of generations to evolve.
   * **seed**: Value for random seed.
+  * **export_individuals**: Boolean option to whether to export images of individuals or not
 
 **Requirements**
 

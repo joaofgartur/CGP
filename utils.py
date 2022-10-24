@@ -29,18 +29,17 @@ def show_img(img):
     plt.show()
 
 
-def save_img(path, individual, img):
-    """
-    It takes a path, an individual number, and an image, and saves the image to the path with the individual number as the
-    filename
-
-    :param path: the path to the directory where the images will be saved
-    :param individual: the individual number
-    :param img: the image to be saved
-    """
+def save_img(path, individual, image):
     filename = path + "/" + str(individual) + ".png"
-    img = img.astype(np.uint8)
-    imageio.imwrite(filename, img)
+    image = image.astype(np.uint8)
+    imageio.imwrite(filename, image)
+
+
+def export_images(population, destination):
+    index = 0
+    for individual in population:
+        save_img(destination, index, individual.data)
+        index += 1
 
 
 def create_white_img(width, height):
@@ -52,6 +51,12 @@ def create_white_img(width, height):
     :return: A white image of the specified width and height.
     """
     img = np.zeros([width, height, 3], dtype=np.uint8)
+    return img
+
+
+def create_random_img(width, height):
+    img = np.random.rand(width, height, 3) * 255
+    img = img.astype(np.uint8)
     return img
 
 
@@ -70,24 +75,13 @@ def get_current_timestamp():
     return timestamp
 
 
-def create_output_folder(path):
-    """
-    If the folder doesn't exist, create it
-
-    :param path: the path to the folder where you want to save the images
-    """
+def create_directory(path):
     isExist = os.path.exists(path)
     if not isExist:
         os.makedirs(path)
 
 
 def write_to_file(filename, data):
-    """
-    It opens a file, writes data to it, and closes the file
-
-    :param filename: the name of the file to write to
-    :param data: the data to be written to the file
-    """
     with open(filename, 'a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(data)
