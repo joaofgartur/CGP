@@ -9,7 +9,7 @@ MIN_OUTPUT = 0.0
 MAX_OUTPUT = 255.0
 FITNESS_MAX_VALUE = 100
 OFFSET = 1  # offset due to difference in node representation -> [f, c1, c2]
-LAMBDA = 4
+LAMBDA = 50
 ONE = 1
 ZERO = 0
 NODE_SIZE = 3
@@ -177,27 +177,25 @@ def compute_function(input_array, function):
 
     result = 0
     if function == 0:
-        result = np.abs(x)
+        result = x
     elif function == 1:
-        result = np.abs(y)
+        result = y
     elif function == 2:
         result = x * y
     elif function == 3:
-        result = np.abs((np.sin(2 * np.pi * x) + np.cos(2 * np.pi * y))) * 0.5
+        result = (np.sin(2 * np.pi * x) + np.cos(2 * np.pi * y)) * 0.5
     elif function == 4:
-        result = np.abs((np.cos(2 * np.pi * x) + np.sin(2 * np.pi * y))) * 0.5
+        result = (np.cos(2 * np.pi * x) + np.sin(2 * np.pi * y)) * 0.5
     elif function == 5:
-        result = np.abs((np.cos(3 * np.pi * x) + np.sin(2 * np.pi * y))) * 0.5
+        result = (np.cos(3 * np.pi * x) + np.sin(2 * np.pi * y)) * 0.5
     elif function == 6:
-        result = np.abs(np.tanh(x + y))
+        result = np.tanh(x + y)
     elif function == 7:
-        result = np.abs(np.sin(np.pi * (x + y)))
+        result = np.sin(np.pi * (x + y))
     elif function == 8:
-        result = np.abs(np.cos(np.pi * (x + y)))
+        result = np.cos(np.pi * (x + y))
     elif function == 9:
         result = np.sqrt((np.power(x, 2) + np.power(y, 2)) * 0.5) - 0.5
-    elif function == 10:
-        result = np.abs(x * y)
 
     return result
 
@@ -246,12 +244,13 @@ def express_phenotype(individual, data):
     output_data = np.zeros(np.shape(data))
 
     # generate output data
+    # passar para matrizes
     x_values = np.linspace(-1, 1.0, num=num_columns)
     y_values = np.linspace(-1.0, 1.0, num=num_rows)
     for i in range(len(x_values)):
         for j in range(len(y_values)):
             x = x_values[i]
-            y = y_values[i]
+            y = y_values[j]
             input_data = np.array([x, y])
             output = individual.decode(input_data, n_u, NP)
             for k in range(individual.num_output):
