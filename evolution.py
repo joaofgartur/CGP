@@ -137,11 +137,13 @@ class Individual:
 
     # decode active nodes
     def decode(self, input_data, n_u, NP):
-        o = np.zeros(self.num_input + self.num_rows * self.num_columns)
+        num_rows, num_columns = input_data[0, :, :].shape
+        num_values = self.num_input + self.num_rows * self.num_columns
+        o = np.zeros((num_values, num_rows, num_columns))
 
         # record input values
         for i in range(0, self.num_input):
-            o[i] = input_data[i]
+            o[i, :, :] = input_data[i, :, :]
 
         for j in range(0, n_u):
 
@@ -151,21 +153,21 @@ class Individual:
             g = n_n * n
 
             # get connection genes
-            in_array = []
+            in_array = np.zeros((num_values, num_rows, num_columns))
             for i in range(0, n_n - 1):
-                in_array.append(o[self.genotype[g + OFFSET + i]])
+                in_array[i, :, :] = o[self.genotype[g + OFFSET + i], :, :]
 
             # get function gene
             function_gene = self.genotype[g]
 
             # calculate node output
             calculated_output = compute_function(in_array, function_gene)
-            o[n + self.num_input] = calculated_output
+            o[n + self.num_input, :, :] = calculated_output
 
         lg = self.genotype.size
-        output = np.zeros(self.num_output)
+        output = np.zeros((self.num_output, num_rows, num_columns))
         for j in range(0, self.num_output):
-            output[j] = o[self.genotype[lg - self.num_output + j]]
+            output[j, :, :] = o[self.genotype[lg - self.num_output + j], :, :]
 
         return output
 
@@ -236,29 +238,36 @@ def population_statistics(output_folder, generation_folder, generation, populati
         individual_stats = [generation, i, individual.fitness, individual.genotype, individual.active_nodes]
         utils.write_to_file(log_file, individual_stats)
 
+
 def express_phenotype(individual, data):
     # discover active nodes of individual
     n_u, NP = individual.nodes_to_process()
 
     num_rows, num_columns = np.shape(data[:, :, 0])
-    output_data = np.zeros(np.shape(data))
 
-    # generate output data
-    # passar para matrizes
-    x_values = np.linspace(-1, 1.0, num=num_columns)
-    y_values = np.linspace(-1.0, 1.0, num=num_rows)
-    for i in range(len(x_values)):
-        for j in range(len(y_values)):
-            x = x_values[i]
-            y = y_values[j]
-            input_data = np.array([x, y])
-            output = individual.decode(input_data, n_u, NP)
-            for k in range(individual.num_output):
-                output_data[i, j, k] = np.interp(output[k], [MIN_INPUT, MAX_INPUT], [MIN_OUTPUT, MAX_OUTPUT])
+    # prepare inputs
+    x_values = get_input_matrix(MIN_INPUT, MAX_INPUT, num_rows, num_columns, 0)
+    y_values = get_input_matrix(MIN_INPUT, MAX_INPUT, num_rows, num_columns, 3)
+    input_data = np.array((x_values, y_values))
+
+    # obtain output
+    output = individual.decode(input_data, n_u, NP)
+    output_data = np.zeros((num_rows, num_columns, individual.num_output))
+    for k in range(individual.num_output):
+        output_data[:, :, k] = np.interp(output[k, :, :], [MIN_INPUT, MAX_INPUT], [MIN_OUTPUT, MAX_OUTPUT])
 
     individual.data = output_data
 
     return NP
+
+
+def get_input_matrix(min_value, max_value, num_rows, num_columns, num_rotations):
+    matrix = np.linspace(min_value, max_value, num=num_rows)
+    matrix = np.resize(matrix, num_rows * num_columns)
+    matrix = np.reshape(matrix, (num_rows, num_columns))
+    matrix = np.rot90(matrix, k=num_rotations)
+
+    return matrix
 
 
 def copy_individual(individual_to_copy):
