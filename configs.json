@@ -9,6 +9,6 @@
   "num_functions": 10,
   "mutation_rate": 0.5,
   "max_generation": 10,
-  "seed": 1234,
+  "seed": 12,
   "export_individuals": true
 }

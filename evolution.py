@@ -177,7 +177,7 @@ def compute_function(input_array, function):
     x = input_array[0]
     y = input_array[1]
 
-    result = 0
+    result = 0.0
     if function == 0:
         result = x
     elif function == 1:
@@ -199,10 +199,13 @@ def compute_function(input_array, function):
     elif function == 9:
         result = np.sqrt((np.power(x, 2) + np.power(y, 2)) * 0.5) - 0.5
 
-    return result
+    result = np.clip(result, -1.0, 1.0)
+
+    return np.interp(result, [-1.0, 1.0], [0.0, 1.0])
 
 
-def population_statistics(output_folder, generation_folder, generation, population, best, parentStats=False, parent=None):
+def population_statistics(output_folder, generation_folder, generation, population, best, parentStats=False,
+                          parent=None):
     fitness_array = np.zeros(0, dtype=np.float32)
 
     log_file = generation_folder + "/" + LOG_FILE
@@ -254,7 +257,7 @@ def express_phenotype(individual, data):
     output = individual.decode(input_data, n_u, NP)
     output_data = np.zeros((num_rows, num_columns, individual.num_output))
     for k in range(individual.num_output):
-        output_data[:, :, k] = np.interp(output[k, :, :], [MIN_INPUT, MAX_INPUT], [MIN_OUTPUT, MAX_OUTPUT])
+        output_data[:, :, k] = np.interp(output[k, :, :], [0.0, 1.0], [0.0, 255.0])
 
     individual.data = output_data
 
