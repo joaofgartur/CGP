@@ -15,7 +15,7 @@ ZERO = 0
 NODE_SIZE = 3
 ARITY = 2
 
-GENERATIONS_LOG_HEADER = ["generation", "max_fitness", "min_fitness", "mean", "std", "fitness", "genotype",
+GENERATIONS_LOG_HEADER = ["generation", "worst_fitness", "best_fitness", "mean", "std", "best_overall", "genotype",
                           "active_nodes"]
 GENERATIONS_LOG_FILE = "generations.csv"
 LOG_HEADER = ["generation", "individual", "fitness", "genotype", "active_nodes"]
@@ -98,7 +98,7 @@ class Individual:
             for i in range(self.num_rows):
 
                 if random.random() < self.mutation_rate:
-                    index = i * self.num_rows + j
+                    index = i * self.num_columns + j
                     if index in self.function_genes_indexes:
                         self.genotype[index] = random.randint(0, self.num_functions)
                     else:
@@ -204,6 +204,14 @@ def compute_function(input_array, function):
     return np.interp(result, [-1.0, 1.0], [0.0, 1.0])
 
 
+def print_stats(statistics):
+    print("\tWorst fitness: {:.4f}".format(statistics['worst_fitness']))
+    print("\tBest fitness: {:.4f}".format(statistics['best_fitness']))
+    print("\tMean: {:.4f}".format(statistics['mean']))
+    print("\tStd: {:.4f}".format(statistics['std']))
+    print("\tBest overall: {:.4f}".format(statistics['best_overall']))
+
+
 def population_statistics(output_folder, generation_folder, generation, population, best, parentStats=False,
                           parent=None):
     fitness_array = np.zeros(0, dtype=np.float32)
@@ -228,18 +236,21 @@ def population_statistics(output_folder, generation_folder, generation, populati
     generations_file = output_folder + "/" + GENERATIONS_LOG_FILE
     mean_fitness = np.mean(fitness_array)
     std_fitness = np.std(fitness_array)
-    min_fitness = np.min(fitness_array)
-    max_fitness = np.max(fitness_array)
-    generation_stats = [generation, min_fitness, max_fitness, mean_fitness, std_fitness, best.fitness,
+    worst_fitness = np.min(fitness_array)
+    best_fitness = np.max(fitness_array)
+    generation_stats = [generation, worst_fitness, best_fitness, mean_fitness, std_fitness, best.fitness,
                         best.genotype, best.active_nodes]
     utils.write_to_file(generations_file, generation_stats)
 
-    # write log for individuals
-    for i in range(len(population)):
-        individual = population[i]
-        fitness_array = np.append(fitness_array, individual.fitness)
-        individual_stats = [generation, i, individual.fitness, individual.genotype, individual.active_nodes]
-        utils.write_to_file(log_file, individual_stats)
+    generation_dict = {
+        "worst_fitness": worst_fitness,
+        "best_fitness": best_fitness,
+        "mean": mean_fitness,
+        "std": std_fitness,
+        "best_overall": best.fitness
+    }
+
+    return generation_dict
 
 
 def express_phenotype(individual, data):
@@ -292,7 +303,7 @@ def select_parent(population, parent):
     parent_index = 0
     new_parent = False
     for individual in population:
-        print("\t[INDIVIDUAL " + str(individual_index) + "] Fitness: " + "{:.4f}".format(individual.fitness))
+        # print("\t[INDIVIDUAL " + str(individual_index) + "] Fitness: " + "{:.4f}".format(individual.fitness))
         if individual.fitness >= max_fitness:
             parent = copy.deepcopy(individual)
             max_fitness = parent.fitness
@@ -308,10 +319,10 @@ def select_parent(population, parent):
     return parent
 
 
-def generate(configs, fitness_function, input_data):
+def generate(configs, save_folder, fitness_function, input_data):
     max_generation = configs.get('max_generation')
 
-    output_folder = "outputs/" + utils.get_current_timestamp()
+    output_folder = save_folder + "/" + utils.get_current_timestamp()
     utils.create_directory(output_folder)
     generations_file = output_folder + "/" + GENERATIONS_LOG_FILE
     utils.write_to_file(generations_file, GENERATIONS_LOG_HEADER)
@@ -340,7 +351,9 @@ def generate(configs, fitness_function, input_data):
     parent = select_parent(population, None)
 
     # get statistics
-    population_statistics(output_folder, generation_folder, ZERO, population, best=parent)
+    statistics = population_statistics(output_folder, generation_folder, ZERO, population, best=parent)
+    print_stats(statistics)
+
     if configs['export_individuals']:
         utils.save_img(best_folder, ZERO, parent.data)
 
@@ -372,10 +385,13 @@ def generate(configs, fitness_function, input_data):
         population = fitness_function(population)
 
         # select parent
-        print("\t[PARENT]: Fitness " + "{:.4f}".format(parent.fitness))
+        # print("\t[PARENT]: Fitness " + "{:.4f}".format(parent.fitness))
         parent = select_parent(population, parent)
         if configs['export_individuals']:
             utils.save_img(best_folder, generation, parent.data)
 
-        population_statistics(output_folder, generation_folder, generation, population,
-                              best=parent, parentStats=True, parent=parent)
+        statistics = population_statistics(output_folder, generation_folder, generation, population,
+                                           best=parent, parentStats=True, parent=parent)
+        print_stats(statistics)
+
+    return population, statistics

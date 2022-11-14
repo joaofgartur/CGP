@@ -1,4 +1,6 @@
 import argparse
+import sys
+
 import utils
 import numpy as np
 import random
@@ -6,6 +8,13 @@ from evolution import ZERO, LAMBDA, generate
 
 
 def fitness_function(population):
+    """
+    It takes a population of individuals, asks the user to evaluate them, and returns the population with the fitness
+    values set
+
+    :param population: set of Individual objects to be evaluated
+    :return: The population with the fitness values of each individual.
+    """
     while True:
         try:
             evaluations = input("[FITNESS] Evaluate generation. Check README.txt for evaluation format.\nEvaluation: ")
@@ -40,17 +49,27 @@ def fitness_function(population):
 
 
 def main():
-
     description = "Cartesian Genetic Programming"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('configs', metavar='configs', type=str, help='Configs file')
+    parser.add_argument('--configs', metavar='configs', type=str, help='Configs file')
+    parser.add_argument('--save_folder', dest='save_folder', type=str, help='Folder in which the exported images '
+                                                                            'are saved')
+
     args = parser.parse_args()
     configs = utils.load_configs(args.configs)
+    if not utils.validate_configs(configs):
+        sys.exit()
+
+    if utils.validate_folder(args.save_folder):
+        save_folder = args.save_folder
+    else:
+        print("[ERROR] Save folder does not exist!")
+        sys.exit()
 
     random.seed(configs['seed'])
+
     input_img = utils.create_white_img(configs['image_width'], configs['image_height'])
-    # input_img = utils.create_random_img(configs['image_width'], configs['image_height'])
-    generate(configs, fitness_function, input_img)
+    generate(configs, save_folder, fitness_function, input_img)
 
 
 if __name__ == '__main__':
